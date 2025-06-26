@@ -30,26 +30,15 @@ The project is organized into three main files:
 
 ## Usage
 
-There are two main ways to use the QA Selector Helper:
+The QA Selector Helper is designed to be used as a browser extension. The previous standalone demo content within `qa-selector.html` has been removed to focus on live page interaction.
 
-**1. As a Standalone Page:**
+**Using as a Browser Extension (e.g., in Chrome/Edge):**
 
-1.  Clone or download the repository/files.
-2.  Open the `qa-selector.html` file directly in your web browser.
-3.  The QA Selector Helper popup will appear on the top right of the page, and it will interact with the demo content provided within `qa-selector.html`.
-4.  Interact with the buttons and features:
-    *   Click "Scan Visible Selectors" to populate the list with elements (from the demo page) that have an ID.
-    *   Click "Enable Hover Mode" to inspect elements (on the demo page) by hovering over them.
-    *   While in Hover Mode, click the "Pin Tooltip" button (📌) in the popup to pin the inspector tooltip. Click "Unpin" (🔓) to release it.
-    *   Use the copy buttons (📋) next to each selector in the tooltip or the list to copy them.
+A `manifest.json` file is included to allow loading the tool as an unpacked browser extension. When loaded as an extension, the `qa-selector.html` page will serve as the popup UI.
 
-**2. As a Browser Extension (e.g., in Chrome/Edge):**
+A `content-script.js` is injected into web pages. This script is responsible for interacting directly with the web page's content (e.g., scanning for elements, providing data for tooltips, highlighting elements). The popup script (`qa-selector.js`) communicates with this content script to orchestrate these actions.
 
-A `manifest.json` file is included to allow loading the tool as an unpacked browser extension. When loaded as an extension, the `qa-selector.html` page will serve as the popup.
-
-A `content-script.js` has been added and is injected into web pages. This script is responsible for interacting directly with the web page's content. The popup script (`qa-selector.js`) communicates with this content script to perform actions on the live page.
-
-*Development Status:* The extension is currently being developed to transition its core functionality (element scanning, inspection, highlighting) from operating on its internal demo content to operating on the live web page viewed by the user. The initial communication bridge between the popup and the content script is being established.
+*Development Status:* The extension's core functionality (element scanning, inspection, highlighting) is being actively developed to operate on the live web page viewed by the user.
 
 **Loading as an Unpacked Extension (Chrome/Edge Example):**
 
