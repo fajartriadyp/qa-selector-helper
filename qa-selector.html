@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QA Selector Helper Extension</title>
+    <link rel="stylesheet" href="qa-selector.css">
+</head>
+<body>
+    <!-- Demo webpage content -->
+    <div style="padding: 20px; font-family: Arial, sans-serif;">
+        <h1 id="main-title" class="page-header">QA Selector Helper Demo</h1>
+        <p class="description">This demo shows how the QA extension works.</p>
+
+        <div id="content-section" class="content-wrapper">
+            <button id="demo-button" class="btn primary-btn" data-testid="demo-btn">Click Me</button>
+            <input type="text" id="demo-input" class="form-input" placeholder="Enter text here" data-automation="text-input">
+
+            <div class="card-container">
+                <div class="card" id="card-1" data-card-id="first">
+                    <h3>Card 1</h3>
+                    <p>Sample content</p>
+                </div>
+                <div class="card" id="card-2" data-card-id="second">
+                    <h3>Card 2</h3>
+                    <p>More content</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="qa-selector.js"></script>
+</body>
+</html>
