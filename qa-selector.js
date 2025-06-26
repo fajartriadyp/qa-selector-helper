@@ -50,17 +50,62 @@ class QASelectorHelper {
         // Add event listeners for buttons inside the popup
         // Ensure qaHelper instance is correctly referenced if these are called from global scope
         document.getElementById('qa-close-extension-btn').addEventListener('click', () => this.closeExtension());
-        document.getElementById('qa-scan-selectors-btn').addEventListener('click', () => this.scanVisibleSelectors());
+        // Modify the "Scan Visible Selectors" button to send a message
+        document.getElementById('qa-scan-selectors-btn').addEventListener('click', () => this.pingContentScript());
         document.getElementById('hover-toggle').addEventListener('click', () => this.toggleHoverMode());
         document.getElementById('pin-toggle').addEventListener('click', (event) => this.togglePin(event)); // Pass event
         document.getElementById('unpin-btn').addEventListener('click', () => this.unpin());
+
+        // Listen for messages from content script (or other parts of the extension)
+        chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+            console.log("QA Selector Helper: Message received in popup script:", request);
+            if (request.from === "content_script" && request.action === "pong_response") {
+                alert(`Received pong from content script: ${request.message}`);
+            }
+            // Allow other listeners to receive the message too, if any.
+            // Or return true if you intend to sendResponse asynchronously.
+            return false; 
+        });
+    }
+
+    pingContentScript() {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0] && tabs[0].id) {
+                chrome.tabs.sendMessage(
+                    tabs[0].id,
+                    { from: "popup_script", action: "ping_content_script" },
+                    (response) => {
+                        if (chrome.runtime.lastError) {
+                            console.error("QA Selector Helper: Error sending message to content script:", chrome.runtime.lastError.message);
+                            alert("Error pinging content script. Is the content script injected on the page? " + chrome.runtime.lastError.message);
+                        } else {
+                            console.log("QA Selector Helper: Response from content script:", response);
+                            if (response && response.status === "success") {
+                                alert("Content script responded successfully: " + response.message);
+                            } else {
+                                alert("Content script responded with an issue or no response.");
+                            }
+                        }
+                    }
+                );
+            } else {
+                console.error("QA Selector Helper: Could not get active tab ID.");
+                alert("Could not get active tab to send message.");
+            }
+        });
     }
 
     scanVisibleSelectors() {
+        // This function will now be triggered by a message from the content script in future steps.
+        // For now, it can remain as is, operating on the popup's demo content if called directly.
+        // Or, we can disable it/change its behavior if "Scan" button is solely for content script interaction.
+        console.log("QA Selector Helper: scanVisibleSelectors (popup) called. This will be refactored for content script.");
         this.visibleSelectors = [];
+        // The following query targets the popup's DOM.
         const allElements = document.querySelectorAll('*[id]'); 
         
         allElements.forEach(element => {
+            // Skip elements from the extension UI itself.
             if (element.closest('.qa-extension-popup') || 
                 element.classList.contains('qa-hover-overlay') ||
                 element.classList.contains('qa-hover-tooltip')) {
