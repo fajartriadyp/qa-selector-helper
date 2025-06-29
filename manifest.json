@@ -1,40 +1,34 @@
 {
-  "manifest_version": 3,
-  "name": "QA Selector Helper",
-  "version": "0.1.0",
-  "description": "Helps identify and copy CSS selectors from a web page. Currently operates on the content within qa-selector.html.",
-  "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
-  },
-  "action": {
-    "default_popup": "qa-selector.html",
-    "default_icon": {
+    "manifest_version": 3,
+    "name": "QA Selector Helper",
+    "version": "0.1.0",
+    "description": "Helps identify and copy CSS selectors from a web page. Currently operates on the content within qa-selector.html.",
+    "icons": {
       "16": "icons/icon16.png",
-      "48": "icons/icon48.png"
-    }
-  },
-  "permissions": [
-    "activeTab",
-    "scripting"
-  ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content-script.js"],
-      "css": ["qa-selector.css"]
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": ["qa-selector.css"],
-      "matches": ["<all_urls>"]
-    }
-  ]
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "action": {
+      "default_popup": "qa-selector.html",
+      "default_icon": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png"
+      }
+    },
+    "permissions": [
+      "activeTab",
+      "scripting"
+    ],
+    "host_permissions": [
+      "<all_urls>"
+    ],
+    "content_scripts": [
+      {
+        "matches": ["<all_urls>"],
+        "js": ["content-script.js"]
+     
+      }
+    ]
 
+  }
   
-}

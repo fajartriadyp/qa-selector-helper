@@ -15,7 +15,7 @@ class QASelectorHelper {
     init() {
         this.createPopup();
         this.attachEventListeners();
-        this.scanVisibleSelectors();
+        // REMOVED: this.scanVisibleSelectors(); - Scanning should be user-initiated via content script
     }
 
     createPopup() {
@@ -51,7 +51,7 @@ class QASelectorHelper {
         // Ensure qaHelper instance is correctly referenced if these are called from global scope
         document.getElementById('qa-close-extension-btn').addEventListener('click', () => this.closeExtension());
         // Modify the "Scan Visible Selectors" button to send a message
-        document.getElementById('qa-scan-selectors-btn').addEventListener('click', () => this.pingContentScript());
+        document.getElementById('qa-scan-selectors-btn').addEventListener('click', () => this.requestPageScan()); // Updated to call renamed method
         document.getElementById('hover-toggle').addEventListener('click', () => this.toggleHoverMode());
         document.getElementById('pin-toggle').addEventListener('click', (event) => this.togglePin(event)); // Pass event
         document.getElementById('unpin-btn').addEventListener('click', () => this.unpin());
@@ -68,22 +68,32 @@ class QASelectorHelper {
         });
     }
 
-    pingContentScript() {
+    // Renamed from pingContentScript to reflect its new purpose
+    requestPageScan() { 
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (tabs[0] && tabs[0].id) {
                 chrome.tabs.sendMessage(
                     tabs[0].id,
-                    { from: "popup_script", action: "ping_content_script" },
+                    // Changed action to "scan_page_elements"
+                    { from: "popup_script", action: "scan_page_elements" }, 
                     (response) => {
                         if (chrome.runtime.lastError) {
-                            console.error("QA Selector Helper: Error sending message to content script:", chrome.runtime.lastError.message);
-                            alert("Error pinging content script. Is the content script injected on the page? " + chrome.runtime.lastError.message);
+                            console.error("QA Selector Helper: Error sending 'scan_page_elements' message:", chrome.runtime.lastError.message);
+                            alert("Error requesting page scan: " + chrome.runtime.lastError.message + "\nEnsure the target page is refreshed after extension reload.");
+                            this.updateSelectorList([]); // Clear list on error
                         } else {
-                            console.log("QA Selector Helper: Response from content script:", response);
-                            if (response && response.status === "success") {
-                                alert("Content script responded successfully: " + response.message);
+                            console.log("QA Selector Helper: Response from content script for 'scan_page_elements':", response);
+                            if (response && response.status === "success" && Array.isArray(response.data)) {
+                                console.log("QA Selector Helper: Received element data from content script:", response.data);
+                                this.updateSelectorList(response.data);
+                            } else if (response && response.status === "error") {
+                                console.error("QA Selector Helper: Content script reported an error during scan:", response.message);
+                                alert("Error during page scan in content script: " + response.message);
+                                this.updateSelectorList([]); // Clear list on error
                             } else {
-                                alert("Content script responded with an issue or no response.");
+                                console.warn("QA Selector Helper: Unexpected response from content script for scan:", response);
+                                alert("Received an unexpected response from the content script during page scan. Check console.");
+                                this.updateSelectorList([]); // Clear list
                             }
                         }
                     }
@@ -204,15 +214,20 @@ class QASelectorHelper {
         return path.join(' > ');
     }
 
-    updateSelectorList() {
+    updateSelectorList(elementsDataArray) { // Parameter is now an array of data objects
         const listElement = document.getElementById('selector-list');
         const countElement = document.getElementById('selector-count');
         
-        countElement.textContent = `Found: ${this.visibleSelectors.length} ID selectors`;
+        if (!listElement || !countElement) {
+            console.error("QA Selector Helper: Popup list or count element not found.");
+            return;
+        }
+
+        countElement.textContent = `Found: ${elementsDataArray.length} elements`;
         
         listElement.innerHTML = ''; // Clear existing items
         
-        this.visibleSelectors.forEach((item) => {
+        elementsDataArray.forEach((elementData) => {
             const div = document.createElement('div');
             div.className = 'qa-selector-item';
             
@@ -223,11 +238,20 @@ class QASelectorHelper {
 
             const infoDiv = document.createElement('div');
             const strongTag = document.createElement('strong');
-            strongTag.textContent = item.element.tagName.toLowerCase();
+            strongTag.textContent = elementData.tagName; // Use data from object
             const br = document.createElement('br');
             const spanSelector = document.createElement('span');
             spanSelector.style.color = '#4299e1';
-            spanSelector.textContent = item.selector;
+
+            // Determine the primary selector to display and copy
+            let primarySelector = elementData.cssPath; // Default to CSS Path
+            if (elementData.id) {
+                primarySelector = `#${elementData.id.replace(/"/g, '\\"')}`; // Use ID if available
+            } else if (elementData.dataTestId) {
+                primarySelector = `[data-testid="${elementData.dataTestId.replace(/"/g, '\\"')}"]`; // Then data-testid
+            }
+            spanSelector.textContent = primarySelector;
+            
             infoDiv.appendChild(strongTag);
             infoDiv.appendChild(br);
             infoDiv.appendChild(spanSelector);
@@ -237,41 +261,40 @@ class QASelectorHelper {
             copyButton.textContent = '📋';
             copyButton.addEventListener('click', (e) => {
                 e.stopPropagation(); 
-                this.copyToClipboard(item.selector, copyButton);
+                this.copyToClipboard(primarySelector, copyButton);
             });
 
             contentDiv.appendChild(infoDiv);
             contentDiv.appendChild(copyButton);
             div.appendChild(contentDiv);
             
-            // Attach click event to the div, not affecting the copy button
             div.addEventListener('click', (e) => {
-                // Ensure the click is not on the copy button itself
                 if (e.target !== copyButton && !copyButton.contains(e.target)) {
-                    this.highlightElement(item.element, this.generateSelectors(item.element));
+                    // TODO: Send message to content script to highlight element based on 'primarySelector' or 'elementData.cssPath'
+                    console.log("Highlight request for:", elementData);
+                    alert("Highlighting on page not yet implemented. Selector: " + primarySelector);
                 }
             });
             listElement.appendChild(div);
         });
     }
 
-    highlightElement(element, selectors) {
-        document.querySelectorAll('.qa-highlighted-element').forEach(el => {
-            el.classList.remove('qa-highlighted-element');
-        });
-        
-        element.classList.add('qa-highlighted-element');
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        
-        // Consider a less intrusive way to show selectors, like updating the tooltip
-        // For now, keeping alert for simplicity as per original code
-        alert(`Element Selectors:\n\n${selectors.join('\n')}`);
-        
-        setTimeout(() => {
-            if (element) { // Check if element still exists
-                element.classList.remove('qa-highlighted-element');
-            }
-        }, 3000);
+    // highlightElement method will need to be removed or completely refactored
+    // as it can't operate on page elements directly from the popup.
+    // For now, we'll leave it, but it's not being effectively used by the new updateSelectorList.
+
+    highlightElement(element, selectors) { // This is now effectively dead code for live page interaction
+        console.warn("highlightElement (popup) called - this path should be updated for content script interaction.");
+        // Original logic for demo page:
+        // document.querySelectorAll('.qa-highlighted-element').forEach(el => {
+        //     el.classList.remove('qa-highlighted-element');
+        // });
+        // element.classList.add('qa-highlighted-element');
+        // element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // alert(`Element Selectors:\n\n${selectors.join('\n')}`);
+        // setTimeout(() => {
+        //     if (element) { element.classList.remove('qa-highlighted-element'); }
+        // }, 3000);
     }
 
     toggleHoverMode() {

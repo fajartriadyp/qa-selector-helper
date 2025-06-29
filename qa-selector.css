@@ -1,23 +1,38 @@
+html, body {
+    width: 320px;   /* Define the width of the popup window */
+    min-height: 150px; /* Default minimum height, can grow with content */
+    height: auto;      /* Let content determine actual height beyond min-height */
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden; /* Prevent horizontal scrollbar if content slightly overflows width */
+}
+
 /* Extension Popup Styles */
 .qa-extension-popup {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    width: 320px;
+    /* position: fixed; /* This is generally not needed for the main container within a popup */
+    /* The positioning (top, right) and fixed nature are handled by the browser for the popup window itself. */
+    /* The .qa-extension-popup div will be a normal block element within the body of qa-selector.html */
+    
+    width: 100%;        /* Fill the width of the body (which is 320px) */
+    min-height: 100%;   /* Fill the min-height of the body */
+    box-sizing: border-box; /* Ensures padding/border are included in width/height, not added to it */
+    
     background: linear-gradient(135deg, #fef3c7, #fcd34d);
     color: #1f2937;
-    border-radius: 16px;
+    border-radius: 16px; /* This might be hidden if html/body don't have matching radius or overflow hidden */
     box-shadow: 0 20px 40px rgba(251, 191, 36, 0.3), 0 0 0 1px rgba(251, 191, 36, 0.2);
-    z-index: 10000;
+    z-index: 10000; /* May not be strictly necessary if it's the only content */
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     font-size: 14px;
-    backdrop-filter: blur(10px);
-    animation: slideIn 0.3s ease-out;
+    backdrop-filter: blur(10px); /* May not work consistently across all browsers in popups */
+    animation: slideIn 0.3s ease-out; /* This animation might look odd if the popup window itself appears instantly */
+    display: flex; /* Use flexbox to manage header and content height */
+    flex-direction: column;
 }
 
 @keyframes slideIn {
     from {
-        transform: translateX(100%);
+        transform: translateX(100%); /* This might be an issue if the container isn't positioned fixed/absolute */
         opacity: 0;
     }
     to {
@@ -29,7 +44,7 @@
 .qa-popup-header {
     background: linear-gradient(135deg, #f59e0b, #d97706);
     padding: 16px 20px;
-    border-radius: 16px 16px 0 0;
+    border-radius: 16px 16px 0 0; /* Will only be visible if .qa-extension-popup has overflow:hidden or matches body radius */
     font-weight: bold;
     display: flex;
     justify-content: space-between;
@@ -37,14 +52,16 @@
     color: white;
     text-shadow: 0 1px 2px rgba(0,0,0,0.1);
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    flex-shrink: 0; /* Prevent header from shrinking */
 }
 
 .qa-popup-content {
     padding: 20px;
-    max-height: 400px;
+    /* max-height: 400px; /* This can be controlled by overall body/html height if needed */
     overflow-y: auto;
     background: rgba(255, 255, 255, 0.9);
-    border-radius: 0 0 16px 16px;
+    border-radius: 0 0 16px 16px; /* Similar to header, depends on parent's overflow/radius */
+    flex-grow: 1; /* Allow content to take available space */
 }
 
 .qa-button {
