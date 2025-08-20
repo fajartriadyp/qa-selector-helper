@@ -1,20 +1,26 @@
 class QASelectorHelper {
     constructor() {
         this.isHoverModeActive = false;
-        this.isPinned = false;
-        this.pinnedElement = null;
+        // Pinning related properties - might be adjusted or removed if pinning is refactored/deferred
+        this.isPinned = false; 
+        // this.pinnedElement = null; // If pinning is handled by content script, this might not be needed here
+        
         this.popup = null;
-        this.overlay = null;
-        this.tooltip = null;
+        // this.overlay = null; // Removed: Handled by content script
+        // this.tooltip = null; // Removed: Handled by content script
         this.visibleSelectors = [];
-        // Store the last mouse move event to use for pinning if click event is not directly on an element
-        this.lastMouseMoveEvent = null; 
+        // this.lastMouseMoveEvent = null; // Removed: Mouse events on page handled by content script
         this.init();
     }
 
     init() {
         this.createPopup();
-        this.attachEventListeners();
+        // Sync hover mode state with content script when popup opens
+        // Add small delay to ensure popup is rendered
+        setTimeout(() => {
+            this.syncHoverModeState();
+        }, 100);
+        // this.attachEventListeners(); // Removed: Event listeners for page hover are in content script
         // REMOVED: this.scanVisibleSelectors(); - Scanning should be user-initiated via content script
     }
 
@@ -41,6 +47,14 @@ class QASelectorHelper {
                         🔓 Unpin
                     </button>
                 </div>
+                <div class="qa-hover-instructions" style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; padding: 12px; margin: 12px 0; font-size: 12px; color: #374151;">
+                    <strong>💡 Hover Mode Tips:</strong><br>
+                    • <strong>Hover</strong> mouse ke elemen untuk melihat selector<br>
+                    • <strong>Right click</strong> untuk pin tooltip di tempat<br>
+                    • <strong>Right click lagi</strong> untuk unpin tooltip<br>
+                    • <strong>Copy selector</strong> dengan klik tombol 📋 di tooltip<br>
+                    • <strong>Pinned tooltip</strong> tetap menampilkan elemen yang di-pin meskipun hover ke elemen lain
+                </div>
                 <div class="qa-count" id="selector-count">Found: 0 selectors</div>
                 <div class="qa-selector-list" id="selector-list"></div>
             </div>
@@ -54,7 +68,7 @@ class QASelectorHelper {
         document.getElementById('qa-scan-selectors-btn').addEventListener('click', () => this.requestPageScan()); // Updated to call renamed method
         document.getElementById('hover-toggle').addEventListener('click', () => this.toggleHoverMode());
         document.getElementById('pin-toggle').addEventListener('click', (event) => this.togglePin(event)); // Pass event
-        document.getElementById('unpin-btn').addEventListener('click', () => this.unpin());
+        document.getElementById('unpin-btn').addEventListener('click', () => this.unpinFromPopup());
 
         // Listen for messages from content script (or other parts of the extension)
         chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -75,7 +89,7 @@ class QASelectorHelper {
                 chrome.tabs.sendMessage(
                     tabs[0].id,
                     // Changed action to "scan_page_elements"
-                    { from: "popup_script", action: "scan_page_elements" }, 
+                    { action: "scan_page_elements" }, 
                     (response) => {
                         if (chrome.runtime.lastError) {
                             console.error("QA Selector Helper: Error sending 'scan_page_elements' message:", chrome.runtime.lastError.message);
@@ -234,45 +248,85 @@ class QASelectorHelper {
             const contentDiv = document.createElement('div');
             contentDiv.style.display = 'flex';
             contentDiv.style.justifyContent = 'space-between';
-            contentDiv.style.alignItems = 'center';
+            contentDiv.style.alignItems = 'flex-start';
+            contentDiv.style.flexDirection = 'column';
+            contentDiv.style.gap = '8px';
 
             const infoDiv = document.createElement('div');
             const strongTag = document.createElement('strong');
             strongTag.textContent = elementData.tagName; // Use data from object
-            const br = document.createElement('br');
-            const spanSelector = document.createElement('span');
-            spanSelector.style.color = '#4299e1';
-
-            // Determine the primary selector to display and copy
-            let primarySelector = elementData.cssPath; // Default to CSS Path
-            if (elementData.id) {
-                primarySelector = `#${elementData.id.replace(/"/g, '\\"')}`; // Use ID if available
-            } else if (elementData.dataTestId) {
-                primarySelector = `[data-testid="${elementData.dataTestId.replace(/"/g, '\\"')}"]`; // Then data-testid
-            }
-            spanSelector.textContent = primarySelector;
-            
             infoDiv.appendChild(strongTag);
-            infoDiv.appendChild(br);
-            infoDiv.appendChild(spanSelector);
 
-            const copyButton = document.createElement('button');
-            copyButton.className = 'qa-copy-btn';
-            copyButton.textContent = '📋';
-            copyButton.addEventListener('click', (e) => {
-                e.stopPropagation(); 
-                this.copyToClipboard(primarySelector, copyButton);
-            });
+            // Display all available selectors in order of priority
+            if (elementData.selectors && elementData.selectors.length > 0) {
+                elementData.selectors.forEach((selector, index) => {
+                    const selectorDiv = document.createElement('div');
+                    selectorDiv.style.display = 'flex';
+                    selectorDiv.style.justifyContent = 'space-between';
+                    selectorDiv.style.alignItems = 'center';
+                    selectorDiv.style.marginTop = '4px';
+                    selectorDiv.style.padding = '4px 8px';
+                    selectorDiv.style.background = index === 0 ? 'rgba(245, 158, 11, 0.1)' : 'rgba(66, 153, 225, 0.1)';
+                    selectorDiv.style.borderRadius = '4px';
+                    selectorDiv.style.borderLeft = index === 0 ? '3px solid #f59e0b' : '3px solid #4299e1';
+
+                    const selectorInfo = document.createElement('div');
+                    const typeSpan = document.createElement('span');
+                    typeSpan.textContent = selector.type;
+                    typeSpan.style.fontSize = '10px';
+                    typeSpan.style.color = '#666';
+                    typeSpan.style.fontWeight = 'bold';
+                    typeSpan.style.textTransform = 'uppercase';
+                    
+                    const valueSpan = document.createElement('span');
+                    valueSpan.textContent = selector.value;
+                    valueSpan.style.color = '#4299e1';
+                    valueSpan.style.fontFamily = 'monospace';
+                    valueSpan.style.fontSize = '11px';
+                    valueSpan.style.marginLeft = '8px';
+                    valueSpan.style.wordBreak = 'break-all';
+
+                    selectorInfo.appendChild(typeSpan);
+                    selectorInfo.appendChild(document.createElement('br'));
+                    selectorInfo.appendChild(valueSpan);
+
+                    const copyButton = document.createElement('button');
+                    copyButton.className = 'qa-copy-btn';
+                    copyButton.textContent = '📋';
+                    copyButton.style.fontSize = '10px';
+                    copyButton.style.padding = '4px 8px';
+                    copyButton.addEventListener('click', (e) => {
+                        e.stopPropagation(); 
+                        this.copyToClipboard(selector.value, copyButton);
+                    });
+
+                    selectorDiv.appendChild(selectorInfo);
+                    selectorDiv.appendChild(copyButton);
+                    infoDiv.appendChild(selectorDiv);
+                });
+            } else {
+                // Fallback for elements without selectors array
+                const spanSelector = document.createElement('span');
+                spanSelector.style.color = '#4299e1';
+                let primarySelector = elementData.cssPath;
+                if (elementData.id) {
+                    primarySelector = `#${elementData.id.replace(/"/g, '\\"')}`;
+                } else if (elementData.dataTestId) {
+                    primarySelector = `[data-testid="${elementData.dataTestId.replace(/"/g, '\\"')}"]`;
+                }
+                spanSelector.textContent = primarySelector;
+                infoDiv.appendChild(document.createElement('br'));
+                infoDiv.appendChild(spanSelector);
+            }
 
             contentDiv.appendChild(infoDiv);
-            contentDiv.appendChild(copyButton);
             div.appendChild(contentDiv);
             
             div.addEventListener('click', (e) => {
-                if (e.target !== copyButton && !copyButton.contains(e.target)) {
-                    // TODO: Send message to content script to highlight element based on 'primarySelector' or 'elementData.cssPath'
+                if (!e.target.classList.contains('qa-copy-btn')) {
+                    // TODO: Send message to content script to highlight element
                     console.log("Highlight request for:", elementData);
-                    alert("Highlighting on page not yet implemented. Selector: " + primarySelector);
+                    alert("Highlighting on page not yet implemented. Selector: " + (elementData.selectors && elementData.selectors.length > 0 ? elementData.selectors[0].value : 'N/A'));
                 }
             });
             listElement.appendChild(div);
@@ -300,250 +354,172 @@ class QASelectorHelper {
     toggleHoverMode() {
         this.isHoverModeActive = !this.isHoverModeActive;
         const button = document.getElementById('hover-toggle');
+        const pinButton = document.getElementById('pin-toggle'); // Pin button might need re-evaluation
+
+        const action = this.isHoverModeActive ? "activate_hover_mode" : "deactivate_hover_mode";
+
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0] && tabs[0].id) {
+                chrome.tabs.sendMessage(
+                    tabs[0].id,
+                    { action: action },
+                    (response) => {
+                        if (chrome.runtime.lastError) {
+                            console.error(`QA Selector Helper: Error sending '${action}' message:`, chrome.runtime.lastError.message);
+                            // Revert UI state on error
+                            this.isHoverModeActive = !this.isHoverModeActive;
+                            alert("Error toggling hover mode: " + chrome.runtime.lastError.message + "\nPlease refresh the page and try again.");
+                        } else {
+                            console.log(`QA Selector Helper: Content script response for '${action}':`, response);
+                            if (response && response.status === "success") {
+                                // Update UI based on successful state change in content script
+                                this.updateHoverModeUI();
+
+                            } else {
+                                // Handle cases where content script didn't confirm, or error
+                                console.warn(`QA Selector Helper: Content script did not successfully process '${action}'. Response:`, response);
+                                // Revert UI change as message couldn't be sent
+                                this.isHoverModeActive = !this.isHoverModeActive;
+                                alert("Failed to toggle hover mode. Please refresh the page and try again.");
+                            }
+                        }
+                    }
+                );
+            } else {
+                console.error("QA Selector Helper: Could not get active tab ID to send message.");
+                // Revert UI change as message couldn't be sent
+                this.isHoverModeActive = !this.isHoverModeActive; // Toggle back
+                alert("Could not get active tab. Please refresh the page and try again.");
+            }
+        });
+    }
+
+    // createOverlay(), removeOverlay(), attachEventListeners(), showHoverInfo() are removed
+    // as per plan, their functionality is now handled by content-script.js
+
+    syncHoverModeState(retryCount = 0) {
+        const maxRetries = 3;
+        
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0] && tabs[0].id) {
+                chrome.tabs.sendMessage(
+                    tabs[0].id,
+                    { action: "get_hover_mode_state" },
+                    (response) => {
+                        if (chrome.runtime.lastError) {
+                            console.error("QA Selector Helper: Error getting hover mode state:", chrome.runtime.lastError.message);
+                            // Check if error is due to content script not being loaded
+                            if (chrome.runtime.lastError.message.includes("Could not establish connection") && retryCount < maxRetries) {
+                                console.log(`QA Selector Helper: Content script not loaded yet, retrying... (${retryCount + 1}/${maxRetries})`);
+                                // Retry after a delay
+                                setTimeout(() => {
+                                    this.syncHoverModeState(retryCount + 1);
+                                }, 200);
+                                return;
+                            }
+                            // Default to false if we can't get the state
+                            this.isHoverModeActive = false;
+                            this.updateHoverModeUI();
+                        } else {
+                            console.log("QA Selector Helper: Hover mode state from content script:", response);
+                            if (response && response.status === "success") {
+                                this.isHoverModeActive = response.hoverMode || false;
+                                this.updateHoverModeUI();
+                                
+                                // Also sync pinned state
+                                this.syncPinnedState();
+                            } else {
+                                this.isHoverModeActive = false;
+                                this.updateHoverModeUI();
+                            }
+                        }
+                    }
+                );
+            } else {
+                console.error("QA Selector Helper: Could not get active tab ID for hover mode sync.");
+                this.isHoverModeActive = false;
+                this.updateHoverModeUI();
+            }
+        });
+    }
+
+    syncPinnedState() {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0] && tabs[0].id) {
+                chrome.tabs.sendMessage(
+                    tabs[0].id,
+                    { action: "get_pinned_state" },
+                    (response) => {
+                        if (chrome.runtime.lastError) {
+                            console.error("QA Selector Helper: Error getting pinned state:", chrome.runtime.lastError.message);
+                        } else {
+                            console.log("QA Selector Helper: Pinned state from content script:", response);
+                            if (response && response.status === "success") {
+                                this.isPinned = response.isPinned || false;
+                                this.updatePinnedUI();
+                            }
+                        }
+                    }
+                );
+            }
+        });
+    }
+
+    updateHoverModeUI() {
+        const button = document.getElementById('hover-toggle');
         const pinButton = document.getElementById('pin-toggle');
         
-        if (this.isHoverModeActive) {
-            button.textContent = 'Disable Hover Mode';
-            button.classList.add('active');
-            pinButton.disabled = false;
-            this.createOverlay();
-        } else {
-            button.textContent = 'Enable Hover Mode';
-            button.classList.remove('active');
-            pinButton.disabled = true;
+        console.log("QA Selector Helper: Updating hover mode UI, isHoverModeActive:", this.isHoverModeActive);
+        
+        if (button) {
+            if (this.isHoverModeActive) {
+                button.textContent = 'Disable Hover Mode';
+                button.classList.add('active');
+                console.log("QA Selector Helper: Hover mode UI updated to ACTIVE");
+            } else {
+                button.textContent = 'Enable Hover Mode';
+                button.classList.remove('active');
+                console.log("QA Selector Helper: Hover mode UI updated to INACTIVE");
+            }
+        }
+        
+        if (pinButton) {
+            pinButton.disabled = !this.isHoverModeActive;
+        }
+        
+        if (!this.isHoverModeActive) {
             this.unpin();
-            this.removeOverlay();
         }
     }
 
-    createOverlay() {
-        if (!this.overlay) {
-            this.overlay = document.createElement('div');
-            this.overlay.className = 'qa-hover-overlay';
-            document.body.appendChild(this.overlay);
-        }
+    updatePinnedUI() {
+        const pinButton = document.getElementById('pin-toggle');
+        const unpinButton = document.getElementById('unpin-btn');
         
-        if (!this.tooltip) {
-            this.tooltip = document.createElement('div');
-            this.tooltip.className = 'qa-hover-tooltip';
-            document.body.appendChild(this.tooltip);
-        }
-    }
-
-    removeOverlay() {
-        if (this.overlay) {
-            this.overlay.remove();
-            this.overlay = null;
-        }
-        if (this.tooltip) {
-            this.tooltip.remove();
-            this.tooltip = null;
-        }
-    }
-
-    attachEventListeners() {
-        // Use .bind(this) or arrow functions to ensure `this` context is correct
-        this.mouseMoveHandler = (e) => {
-            this.lastMouseMoveEvent = e; // Store the event
-            if (!this.isHoverModeActive || this.isPinned) return;
-            
-            const element = e.target;
-            
-            if (element.closest('.qa-extension-popup') || 
-                element.classList.contains('qa-hover-overlay') ||
-                element.classList.contains('qa-hover-tooltip')) {
-                return;
+        console.log("QA Selector Helper: Updating pinned UI, isPinned:", this.isPinned);
+        
+        if (pinButton && unpinButton) {
+            if (this.isPinned) {
+                pinButton.style.display = 'none';
+                unpinButton.style.display = 'inline-block';
+                console.log("QA Selector Helper: Pinned UI updated to PINNED");
+            } else {
+                pinButton.style.display = 'inline-block';
+                unpinButton.style.display = 'none';
+                console.log("QA Selector Helper: Pinned UI updated to UNPINNED");
             }
-            
-            this.showHoverInfo(element, e);
-        };
-
-        this.clickHandler = (e) => {
-            if (!this.isHoverModeActive) return;
-            
-            const element = e.target;
-            
-            if (element.closest('.qa-extension-popup') || 
-                element.classList.contains('qa-hover-overlay') ||
-                element.classList.contains('qa-hover-tooltip') ||
-                element.classList.contains('qa-copy-btn') || // Also ignore clicks on copy buttons in tooltip
-                element.closest('.qa-copy-btn')) { // Check parent for clicks within copy button (e.g. icon)
-                return;
-            }
-            
-            // If clicking on a different element while pinned, switch to that element
-            if (this.isPinned && element !== this.pinnedElement) {
-                this.pinnedElement = element;
-                this.showHoverInfo(element, e, true); 
-            }
-        };
-        
-        document.addEventListener('mousemove', this.mouseMoveHandler);
-        document.addEventListener('click', this.clickHandler);
-    }
-
-    showHoverInfo(element, event, forcePin = false) { 
-        if (!this.overlay || !this.tooltip) return;
-        if (!element || !event) return; // Ensure element and event are valid
-        
-        if (this.isPinned && !forcePin) return;
-        
-        const rect = element.getBoundingClientRect();
-        // Ensure selectors are generated for the current element, not potentially stale one
-        const currentSelectors = this.generateSelectors(element); 
-        
-        this.overlay.style.left = rect.left + window.scrollX + 'px'; // Add scrollX for correct positioning
-        this.overlay.style.top = rect.top + window.scrollY + 'px';   // Add scrollY
-        this.overlay.style.width = rect.width + 'px';
-        this.overlay.style.height = rect.height + 'px';
-        
-        if (this.isPinned) {
-            this.overlay.classList.add('qa-overlay-pinned');
-        } else {
-            this.overlay.classList.remove('qa-overlay-pinned');
-        }
-
-        this.tooltip.innerHTML = ''; 
-
-        const headerDiv = document.createElement('div');
-        headerDiv.style.cssText = `
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            margin-bottom: 12px; 
-            padding-bottom: 8px; 
-            border-bottom: 1px solid rgba(245, 158, 11, 0.3);
-        `;
-
-        const titleSpan = document.createElement('span');
-        titleSpan.style.cssText = `color: #fbbf24; font-weight: bold;`;
-        titleSpan.textContent = 'Element Inspector';
-        headerDiv.appendChild(titleSpan);
-
-        if (this.isPinned) {
-            const pinnedSpan = document.createElement('span');
-            pinnedSpan.style.cssText = `color: #8b5cf6; font-size: 10px;`;
-            pinnedSpan.textContent = '📌 PINNED';
-            headerDiv.appendChild(pinnedSpan);
-        }
-        this.tooltip.appendChild(headerDiv);
-
-        const createSection = (label, value, copyValue = null) => {
-            if (value === undefined || value === null || value === '') return;
-
-            const sectionDiv = document.createElement('div');
-            sectionDiv.className = 'qa-tooltip-section';
-
-            const labelDiv = document.createElement('div');
-            labelDiv.className = 'qa-tooltip-label';
-            labelDiv.textContent = label;
-            sectionDiv.appendChild(labelDiv);
-
-            const valueDivContainer = document.createElement('div');
-            valueDivContainer.className = 'qa-tooltip-value'; // This class primarily sets color
-            valueDivContainer.style.display = 'flex';
-            valueDivContainer.style.justifyContent = 'space-between';
-            valueDivContainer.style.alignItems = 'center';
-            
-            const valueSpan = document.createElement('span');
-            valueSpan.style.wordBreak = 'break-all';
-            valueSpan.style.marginRight = '8px';
-            valueSpan.textContent = value;
-            valueDivContainer.appendChild(valueSpan);
-
-            const copyBtn = document.createElement('button');
-            copyBtn.className = 'qa-copy-btn';
-            copyBtn.textContent = '📋';
-            copyBtn.addEventListener('click', (e) => {
-                e.stopPropagation(); // Prevent click event from bubbling up
-                this.copyToClipboard(copyValue !== null ? copyValue : value, copyBtn);
-            });
-            valueDivContainer.appendChild(copyBtn);
-            
-            sectionDiv.appendChild(valueDivContainer);
-            this.tooltip.appendChild(sectionDiv);
-        };
-        
-        createSection('Tag:', element.tagName.toLowerCase());
-        if (element.id) createSection('ID:', `#${element.id}`);
-        
-        const classNameString = (element.className && typeof element.className === 'string') ? element.className.trim() : (element.getAttribute('class') || '').trim();
-        if (classNameString) {
-            createSection('Classes:', `.${classNameString.replace(/\s+/g, '.')}`);
-        }
-
-        createSection('CSS Path:', this.getCSSPath(element));
-
-        const dataAttributes = Array.from(element.attributes).filter(attr => attr.name.startsWith('data-'));
-        if (dataAttributes.length > 0) {
-            const sectionDiv = document.createElement('div');
-            sectionDiv.className = 'qa-tooltip-section';
-            const labelDiv = document.createElement('div');
-            labelDiv.className = 'qa-tooltip-label';
-            labelDiv.textContent = 'Data Attributes:';
-            sectionDiv.appendChild(labelDiv);
-
-            dataAttributes.forEach(attr => {
-                const valueDivContainer = document.createElement('div');
-                valueDivContainer.className = 'qa-tooltip-value';
-                valueDivContainer.style.display = 'flex';
-                valueDivContainer.style.justifyContent = 'space-between';
-                valueDivContainer.style.alignItems = 'center';
-                valueDivContainer.style.marginBottom = '4px';
-
-                const valueSpan = document.createElement('span');
-                valueSpan.textContent = `[${attr.name}="${attr.value}"]`;
-                valueDivContainer.appendChild(valueSpan);
-
-                const copyBtn = document.createElement('button');
-                copyBtn.className = 'qa-copy-btn';
-                copyBtn.textContent = '📋';
-                copyBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this.copyToClipboard(`[${attr.name}="${attr.value}"]`, copyBtn);
-                });
-                valueDivContainer.appendChild(copyBtn);
-                sectionDiv.appendChild(valueDivContainer);
-            });
-            this.tooltip.appendChild(sectionDiv);
-        }
-        
-        if (this.isPinned) {
-            this.tooltip.classList.add('qa-tooltip-pinned');
-        } else {
-            this.tooltip.classList.remove('qa-tooltip-pinned');
-        }
-        
-        if (!this.isPinned || forcePin) {
-            // Ensure event.clientX and event.clientY are valid numbers
-            const clientX = typeof event.clientX === 'number' ? event.clientX : 0;
-            const clientY = typeof event.clientY === 'number' ? event.clientY : 0;
-
-            let tooltipX = clientX + 10;
-            let tooltipY = clientY + 10;
-            
-            const tooltipRect = this.tooltip.getBoundingClientRect(); // Get dimensions after content is added
-            if (tooltipX + tooltipRect.width > window.innerWidth) {
-                tooltipX = clientX - tooltipRect.width - 10;
-            }
-            if (tooltipY + tooltipRect.height > window.innerHeight) {
-                tooltipY = clientY - tooltipRect.height - 10;
-            }
-            
-            this.tooltip.style.left = tooltipX + window.scrollX + 'px'; // Add scrollX
-            this.tooltip.style.top = tooltipY + window.scrollY + 'px';   // Add scrollY
         }
     }
 
     closeExtension() {
         if (this.popup) this.popup.remove();
-        this.removeOverlay();
-        document.removeEventListener('mousemove', this.mouseMoveHandler);
-        document.removeEventListener('click', this.clickHandler);
+        // this.removeOverlay(); // Removed
+        // document.removeEventListener('mousemove', this.mouseMoveHandler); // Removed
+        // document.removeEventListener('click', this.clickHandler); // Removed
         // Nullify references to DOM elements to help GC
         this.popup = null;
-        this.overlay = null;
-        this.tooltip = null;
+        // this.overlay = null; // Removed
+        // this.tooltip = null; // Removed
     }
 
     copyToClipboard(text, buttonElement) {
@@ -599,35 +575,66 @@ class QASelectorHelper {
         // Determine the element to pin
         // If the click event for pinning has a target, use that.
         // Otherwise, fall back to the element under the mouse from the last mousemove event.
-        let elementToPin = null;
-        let eventForPinning = null;
+        // let elementToPin = null; // Pinning target selection logic needs to be re-evaluated for content script.
+        // let eventForPinning = null; // This also needs re-evaluation.
 
-        if (event && event.target && event.target !== pinButton && !pinButton.contains(event.target)) {
-            // This case is unlikely if togglePin is called directly from pinButton's listener without passing event.
-            // But if it were called from a general click listener that then decides to pin:
-            elementToPin = event.target;
-            eventForPinning = event;
-        } else if (this.lastMouseMoveEvent) {
-            // This is the more likely scenario if togglePin is called from the pin button's own click listener.
-            // The `event` argument for `togglePin` would be the click on the pin button itself.
-            // We need the element that was being hovered just before the pin button was clicked.
-            elementToPin = document.elementFromPoint(this.lastMouseMoveEvent.clientX, this.lastMouseMoveEvent.clientY);
-            eventForPinning = this.lastMouseMoveEvent;
-        }
+        // For now, togglePin will just manage the visual state of the pin buttons in the popup.
+        // Actual pinning/unpinning communication with content script is TBD.
+        // console.warn("Pinning functionality needs to be reimplemented to communicate with content script.");
 
-        if (elementToPin && !elementToPin.closest('.qa-extension-popup')) {
-            this.pinnedElement = elementToPin;
-            this.showHoverInfo(this.pinnedElement, eventForPinning, true); // forcePin = true
-        } else {
-            // If no valid element could be determined (e.g., mouse was over the popup),
-            // it might be desirable to unpin or not pin anything.
-            // For now, we'll just log or do nothing if elementToPin is not suitable.
-            console.warn("Could not determine a valid element to pin.");
-            // Potentially revert isPinned state if nothing was pinned:
-            // this.isPinned = false; 
-            // pinButton.style.display = 'inline-block';
-            // unpinButton.style.display = 'none';
-        }
+
+        // if (event && event.target && event.target !== pinButton && !pinButton.contains(event.target)) {
+        //     // This case is unlikely if togglePin is called directly from pinButton's listener without passing event.
+        //     // But if it were called from a general click listener that then decides to pin:
+        //     elementToPin = event.target;
+        //     eventForPinning = event;
+        // } else if (this.lastMouseMoveEvent) { // this.lastMouseMoveEvent is removed
+        //     // This is the more likely scenario if togglePin is called from the pin button's own click listener.
+        //     // The `event` argument for `togglePin` would be the click on the pin button itself.
+        //     // We need the element that was being hovered just before the pin button was clicked.
+        //     // elementToPin = document.elementFromPoint(this.lastMouseMoveEvent.clientX, this.lastMouseMoveEvent.clientY);
+        //     // eventForPinning = this.lastMouseMoveEvent;
+        // }
+
+        // if (elementToPin && !elementToPin.closest('.qa-extension-popup')) {
+             // this.pinnedElement = elementToPin; // This state should likely live in content script or be passed to it.
+             // this.showHoverInfo(this.pinnedElement, eventForPinning, true); // showHoverInfo is removed.
+             // TODO: Send message to content script to pin the current element.
+             console.log("Pinning action: Would need to message content script.");
+        // } else {
+        //     // If no valid element could be determined (e.g., mouse was over the popup),
+        //     // it might be desirable to unpin or not pin anything.
+        //     // For now, we'll just log or do nothing if elementToPin is not suitable.
+        //     console.warn("Could not determine a valid element to pin from popup context. Pinning requires content script interaction.");
+        //     // Potentially revert isPinned state if nothing was pinned:
+        //     this.isPinned = false; 
+        //     pinButton.style.display = 'inline-block';
+        //     unpinButton.style.display = 'none';
+        // }
+    }
+
+    unpinFromPopup() {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0] && tabs[0].id) {
+                chrome.tabs.sendMessage(
+                    tabs[0].id,
+                    { action: "unpin_tooltip" },
+                    (response) => {
+                        if (chrome.runtime.lastError) {
+                            console.error("QA Selector Helper: Error unpinning tooltip:", chrome.runtime.lastError.message);
+                        } else {
+                            console.log("QA Selector Helper: Unpin tooltip response:", response);
+                            if (response && response.status === "success") {
+                                this.isPinned = false;
+                                this.updatePinnedUI();
+                            }
+                        }
+                    }
+                );
+            } else {
+                console.error("QA Selector Helper: Could not get active tab ID to unpin tooltip.");
+            }
+        });
     }
 
     unpin() {
@@ -640,13 +647,16 @@ class QASelectorHelper {
         pinButton.style.display = 'inline-block';
         unpinButton.style.display = 'none';
         
-        if (this.overlay) this.overlay.classList.remove('qa-overlay-pinned');
-        if (this.tooltip) this.tooltip.classList.remove('qa-tooltip-pinned');
+        // if (this.overlay) this.overlay.classList.remove('qa-overlay-pinned'); // overlay is removed
+        // if (this.tooltip) this.tooltip.classList.remove('qa-tooltip-pinned'); // tooltip is removed
+        
         // After unpinning, the hover info should ideally update to the current mouse position
-        // if hover mode is still active. We can simulate a mouse move.
-        if (this.isHoverModeActive && this.lastMouseMoveEvent) {
-            this.showHoverInfo(document.elementFromPoint(this.lastMouseMoveEvent.clientX, this.lastMouseMoveEvent.clientY), this.lastMouseMoveEvent);
-        }
+        // if hover mode is still active. This logic now resides in content script.
+        // if (this.isHoverModeActive && this.lastMouseMoveEvent) { // lastMouseMoveEvent is removed
+        //    // this.showHoverInfo(document.elementFromPoint(this.lastMouseMoveEvent.clientX, this.lastMouseMoveEvent.clientY), this.lastMouseMoveEvent); // showHoverInfo is removed
+        // }
+        // TODO: Send message to content script to unpin.
+        console.log("Unpin action: Would need to message content script.");
     }
 }
 

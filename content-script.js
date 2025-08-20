@@ -4,6 +4,9 @@ console.log("QA Selector Helper: Content Script Loaded.");
 let isHoverModeActive = false;
 let pageTooltip = null;
 let currentlyHighlightedElement = null;
+let isTooltipPinned = false;
+let pinnedElement = null;
+let pinnedElementData = null;
 // ---
 
 function getCSSPath(element) {
@@ -63,6 +66,52 @@ function getCSSPath(element) {
     return path.join(' > ');
 }
 
+function getXPath(element) {
+    if (!(element instanceof Element)) {
+        return null;
+    }
+    
+    if (element.id) {
+        return `//*[@id="${element.id}"]`;
+    }
+    
+    if (element === document.body) {
+        return '/html/body';
+    }
+    
+    if (element === document.documentElement) {
+        return '/html';
+    }
+    
+    let path = '';
+    let current = element;
+    
+    while (current && current.parentElement) {
+        let index = 1;
+        let sibling = current.previousElementSibling;
+        
+        while (sibling) {
+            if (sibling.tagName === current.tagName) {
+                index++;
+            }
+            sibling = sibling.previousElementSibling;
+        }
+        
+        const tagName = current.tagName.toLowerCase();
+        const pathIndex = (index > 1) ? `[${index}]` : '';
+        path = `/${tagName}${pathIndex}${path}`;
+        
+        current = current.parentElement;
+        
+        if (current === document.body) {
+            path = '/html/body' + path;
+            break;
+        }
+    }
+    
+    return path;
+}
+
 function generateElementData(element) {
     if (!(element instanceof Element)) {
         return null;
@@ -73,7 +122,8 @@ function generateElementData(element) {
         id: element.id || null,
         classes: element.className && typeof element.className === 'string' ? element.className.trim() : null,
         cssPath: getCSSPath(element),
-        dataAttributes: {}
+        dataAttributes: {},
+        selectors: [] // Array untuk menyimpan semua selector yang mungkin
     };
 
     // Extract all data-* attributes
@@ -86,6 +136,68 @@ function generateElementData(element) {
     
     // Specifically pull out data-testid if it exists, for convenience
     data.dataTestId = element.getAttribute('data-testid') || null;
+
+    // Generate semua selector yang mungkin dalam urutan prioritas QA
+    if (element.id) {
+        data.selectors.push({
+            type: 'ID',
+            value: `#${element.id.replace(/"/g, '\\"')}`,
+            priority: 1
+        });
+    }
+
+    if (data.dataTestId) {
+        data.selectors.push({
+            type: 'Data Test ID',
+            value: `[data-testid="${data.dataTestId.replace(/"/g, '\\"')}"]`,
+            priority: 2
+        });
+    }
+
+    // Data attributes lainnya
+    Object.keys(data.dataAttributes).forEach(attrName => {
+        if (attrName !== 'data-testid') {
+            data.selectors.push({
+                type: attrName.charAt(0).toUpperCase() + attrName.slice(1),
+                value: `[${attrName}="${data.dataAttributes[attrName].replace(/"/g, '\\"')}"]`,
+                priority: 3
+            });
+        }
+    });
+
+    // Class selector
+    if (data.classes) {
+        const classList = data.classes.split(/\s+/).filter(c => c);
+        if (classList.length > 0) {
+            data.selectors.push({
+                type: 'Class',
+                value: `.${classList.join('.')}`,
+                priority: 4
+            });
+        }
+    }
+
+    // XPath
+    const xpath = getXPath(element);
+    if (xpath) {
+        data.selectors.push({
+            type: 'XPath',
+            value: xpath,
+            priority: 5
+        });
+    }
+
+    // CSS Path
+    if (data.cssPath) {
+        data.selectors.push({
+            type: 'CSS Path',
+            value: data.cssPath,
+            priority: 6
+        });
+    }
+
+    // Sort selectors by priority
+    data.selectors.sort((a, b) => a.priority - b.priority);
 
     return data;
 }
@@ -104,6 +216,28 @@ function scanPageForSelectors() {
             elementsData.push(data);
         }
     });
+    
+    // Sort elements: ID elements first, then data-testid, then others
+    elementsData.sort((a, b) => {
+        const aHasId = a.id ? 1 : 0;
+        const bHasId = b.id ? 1 : 0;
+        const aHasDataTestId = a.dataTestId ? 1 : 0;
+        const bHasDataTestId = b.dataTestId ? 1 : 0;
+        
+        // Sort by ID first (highest priority)
+        if (aHasId !== bHasId) {
+            return bHasId - aHasId;
+        }
+        
+        // Then by data-testid
+        if (aHasDataTestId !== bHasDataTestId) {
+            return bHasDataTestId - aHasDataTestId;
+        }
+        
+        // Then alphabetically by tag name
+        return a.tagName.localeCompare(b.tagName);
+    });
+    
     console.log("Found elements data for scan:", elementsData);
     return elementsData;
 }
@@ -131,16 +265,42 @@ function showPageTooltip(elementData, event) {
     if (elementData.id) primarySelector = `#${elementData.id.replace(/"/g, '\\"')}`;
     else if (elementData.dataTestId) primarySelector = `[data-testid="${elementData.dataTestId.replace(/"/g, '\\"')}"]`;
 
-    pageTooltip.innerHTML = `
-        <strong>Tag:</strong> ${elementData.tagName}<br>
-        <strong>Selector:</strong> ${primarySelector.replace(/</g, "&lt;").replace(/>/g, "&gt;")}
-        ${elementData.classes ? `<br><strong>Classes:</strong> ${elementData.classes.replace(/</g, "&lt;").replace(/>/g, "&gt;")}` : ''}
-    `;
+    // Build tooltip content with all available selectors
+    let tooltipContent = `<strong>Tag:</strong> ${elementData.tagName}<br>`;
+    
+    if (elementData.selectors && elementData.selectors.length > 0) {
+        tooltipContent += `<strong>Selectors:</strong><br>`;
+        elementData.selectors.forEach((selector, index) => {
+            const escapedValue = selector.value.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            tooltipContent += `<span style="color: #fbbf24; font-size: 10px;">${selector.type}:</span> <span style="color: #e5e7eb; font-family: monospace; font-size: 11px;">${escapedValue}</span>`;
+            
+            // Add copy button for each selector
+            tooltipContent += `<button class="qa-tooltip-copy-btn" data-selector="${selector.value.replace(/"/g, '&quot;')}" style="background: #f59e0b; color: white; border: none; border-radius: 3px; padding: 2px 6px; margin-left: 8px; font-size: 10px; cursor: pointer;">📋</button><br>`;
+        });
+    } else {
+        tooltipContent += `<strong>Selector:</strong> ${primarySelector.replace(/</g, "&lt;").replace(/>/g, "&gt;")}`;
+    }
+
+    if (elementData.classes) {
+        tooltipContent += `<br><strong>Classes:</strong> ${elementData.classes.replace(/</g, "&lt;").replace(/>/g, "&gt;")}`;
+    }
+
+    pageTooltip.innerHTML = tooltipContent;
+
+    // Add event listeners for copy buttons
+    pageTooltip.querySelectorAll('.qa-tooltip-copy-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const selector = btn.getAttribute('data-selector');
+            copyToClipboard(selector, btn);
+        });
+    });
 
     let x = event.clientX + 15;
     let y = event.clientY + 15;
     pageTooltip.style.left = x + 'px';
     pageTooltip.style.top = y + 'px';
+    pageTooltip.style.display = 'block';
     pageTooltip.classList.add('visible'); 
 
     requestAnimationFrame(() => { 
@@ -159,11 +319,18 @@ function showPageTooltip(elementData, event) {
 function hidePageTooltip() {
     if (pageTooltip) {
         pageTooltip.classList.remove('visible');
+        pageTooltip.style.display = 'none';
     }
 }
 
 function applyElementHighlight(element) {
     if (!(element instanceof Element)) return;
+    
+    // Don't apply highlight if it's the pinned element (it already has pinned highlight)
+    if (element === pinnedElement) {
+        return;
+    }
+    
     removeElementHighlight(); // Remove from previous
     element.classList.add('qa-cs-highlight');
     currentlyHighlightedElement = element;
@@ -171,25 +338,84 @@ function applyElementHighlight(element) {
 
 function removeElementHighlight() {
     if (currentlyHighlightedElement) {
-        currentlyHighlightedElement.classList.remove('qa-cs-highlight');
+        // Don't remove highlight if it's the pinned element
+        if (currentlyHighlightedElement !== pinnedElement) {
+            currentlyHighlightedElement.classList.remove('qa-cs-highlight');
+        }
         currentlyHighlightedElement = null;
     }
 }
 
+function copyToClipboard(text, buttonElement) {
+    navigator.clipboard.writeText(text).then(() => {
+        const originalText = buttonElement.textContent;
+        buttonElement.textContent = '✓';
+        buttonElement.style.background = '#10b981';
+        
+        setTimeout(() => {
+            buttonElement.textContent = originalText;
+            buttonElement.style.background = '#f59e0b';
+        }, 1000);
+    }).catch(err => {
+        console.warn('Async clipboard write failed, trying fallback:', err);
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        textArea.setSelectionRange(0, 99999);
+
+        try {
+            const successful = document.execCommand('copy');
+            if(successful){
+                const originalText = buttonElement.textContent;
+                buttonElement.textContent = '✓';
+                buttonElement.style.background = '#10b981';
+                setTimeout(() => {
+                    buttonElement.textContent = originalText;
+                    buttonElement.style.background = '#f59e0b';
+                }, 1000);
+            } else {
+                console.error('Fallback copy command failed');
+            }
+        } catch (e) {
+            console.error('Fallback copy failed with exception', e);
+        }
+        document.body.removeChild(textArea);
+    });
+}
+
 // --- Event Handlers for Hover Mode ---
 function handlePageMouseOver(event) {
-    console.log("QA Selector Helper (Content Script): handlePageMouseOver triggered. Target:", event.target); // DIAGNOSTIC LOG
     if (!isHoverModeActive) {
-        // console.log("QA Selector Helper (Content Script): Hover mode is OFF, exiting handlePageMouseOver."); // Optional: too noisy
         return;
     }
     const target = event.target;
     if (!target || target.id === 'qa-cs-tooltip-unique-id' || target.closest('.qa-cs-tooltip')) {
-        // console.log("QA Selector Helper (Content Script): Ignoring hover on tooltip or self."); // Optional: too noisy
         return;
     }
 
-    console.log("QA Selector Helper (Content Script): Processing hover for element:", target); // DIAGNOSTIC LOG
+    console.log("QA Selector Helper (Content Script): Processing hover for element:", target);
+    
+    // If tooltip is pinned, don't change it - only highlight the hovered element temporarily
+    if (isTooltipPinned) {
+        // Remove temporary highlight from all other elements except pinned element
+        document.querySelectorAll('.qa-cs-temp-hover').forEach(el => {
+            if (el !== target && el !== pinnedElement) {
+                el.classList.remove('qa-cs-temp-hover');
+            }
+        });
+        
+        // Only apply temporary highlight to hovered element (not the pinned one)
+        if (target !== pinnedElement) {
+            // Apply temporary highlight to current hovered element
+            target.classList.add('qa-cs-temp-hover');
+        }
+        return; // Don't change the pinned tooltip
+    }
+    
+    // Normal hover behavior when not pinned
     const elementData = generateElementData(target);
     if (elementData) {
         applyElementHighlight(target);
@@ -198,18 +424,129 @@ function handlePageMouseOver(event) {
 }
 
 function handlePageMouseOut(event) {
-    console.log("QA Selector Helper (Content Script): handlePageMouseOut triggered. Target:", event.target, "RelatedTarget:", event.relatedTarget); // DIAGNOSTIC LOG
     if (!isHoverModeActive) {
-        // console.log("QA Selector Helper (Content Script): Hover mode is OFF, exiting handlePageMouseOut."); // Optional: too noisy
         return;
     }
     if (event.relatedTarget && (event.relatedTarget.id === 'qa-cs-tooltip-unique-id' || event.relatedTarget.closest('.qa-cs-tooltip'))) {
-        // console.log("QA Selector Helper (Content Script): Mouse moved to tooltip, not hiding."); // Optional: too noisy
         return;
     }
-    console.log("QA Selector Helper (Content Script): Hiding tooltip and removing highlight due to mouseout."); // DIAGNOSTIC LOG
+    
+    const target = event.target;
+    
+    // If tooltip is pinned, only remove temporary hover highlight
+    if (isTooltipPinned) {
+        if (target && target !== pinnedElement) {
+            target.classList.remove('qa-cs-temp-hover');
+        }
+        return; // Don't hide pinned tooltip
+    }
+    
+    // Normal behavior when not pinned
     hidePageTooltip();
     removeElementHighlight();
+}
+
+function handlePageRightClick(event) {
+    if (!isHoverModeActive) {
+        return;
+    }
+    
+    const target = event.target;
+    if (!target || target.id === 'qa-cs-tooltip-unique-id' || target.closest('.qa-cs-tooltip')) {
+        return;
+    }
+    
+    // Prevent default context menu
+    event.preventDefault();
+    
+    console.log("QA Selector Helper (Content Script): Right click detected on element:", target);
+    
+    if (isTooltipPinned) {
+        // Unpin current tooltip
+        unpinTooltip();
+    } else {
+        // Pin tooltip to current element
+        const elementData = generateElementData(target);
+        if (elementData) {
+            pinTooltip(target, elementData, event);
+        }
+    }
+}
+
+function pinTooltip(element, elementData, event) {
+    isTooltipPinned = true;
+    pinnedElement = element;
+    pinnedElementData = elementData;
+    
+    console.log("QA Selector Helper (Content Script): Tooltip PINNED to element:", element);
+    
+    // Apply special highlight for pinned element
+    applyElementHighlight(element);
+    element.classList.add('qa-cs-pinned');
+    
+    // Show tooltip at the pinned position
+    showPageTooltip(elementData, event);
+    
+    // Add pinned indicator to tooltip
+    if (pageTooltip) {
+        pageTooltip.classList.add('qa-cs-tooltip-pinned');
+        addPinnedIndicator();
+    }
+}
+
+function unpinTooltip() {
+    isTooltipPinned = false;
+    
+    console.log("QA Selector Helper (Content Script): Tooltip UNPINNED");
+    
+    // Remove special highlight from pinned element
+    if (pinnedElement) {
+        pinnedElement.classList.remove('qa-cs-pinned');
+        pinnedElement = null;
+    }
+    
+    pinnedElementData = null;
+    
+    // Remove pinned indicator from tooltip
+    if (pageTooltip) {
+        pageTooltip.classList.remove('qa-cs-tooltip-pinned');
+        removePinnedIndicator();
+    }
+    
+    // Remove all temporary hover highlights
+    document.querySelectorAll('.qa-cs-temp-hover').forEach(el => {
+        el.classList.remove('qa-cs-temp-hover');
+    });
+    
+    // Hide tooltip and remove highlight
+    hidePageTooltip();
+    removeElementHighlight();
+}
+
+function addPinnedIndicator() {
+    if (pageTooltip) {
+        // Add pinned indicator text
+        const pinnedIndicator = pageTooltip.querySelector('.qa-pinned-indicator');
+        if (!pinnedIndicator) {
+            const indicator = document.createElement('div');
+            indicator.className = 'qa-pinned-indicator';
+            indicator.innerHTML = `
+                <div style="background: #8b5cf6; color: white; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-bottom: 8px; text-align: center;">
+                    📌 PINNED - Right click to unpin
+                </div>
+            `;
+            pageTooltip.insertBefore(indicator, pageTooltip.firstChild);
+        }
+    }
+}
+
+function removePinnedIndicator() {
+    if (pageTooltip) {
+        const pinnedIndicator = pageTooltip.querySelector('.qa-pinned-indicator');
+        if (pinnedIndicator) {
+            pinnedIndicator.remove();
+        }
+    }
 }
 
 // Initialize tooltip once when script loads
@@ -218,7 +555,7 @@ createPageTooltip();
 // Add event listeners for hover (will only act if isHoverModeActive is true)
 document.addEventListener('mouseover', handlePageMouseOver, true); // Use capturing for broader reach
 document.addEventListener('mouseout', handlePageMouseOut, true);   // Use capturing
-
+document.addEventListener('contextmenu', handlePageRightClick, true); // Right click for pin/unpin
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log("QA Selector Helper (Content Script): Message received:", request);
@@ -242,10 +579,34 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse({ status: "success", hoverMode: isHoverModeActive });
   } else if (request.action === "deactivate_hover_mode") {
     isHoverModeActive = false;
-    hidePageTooltip();
-    removeElementHighlight();
+    // Unpin tooltip if it's pinned
+    if (isTooltipPinned) {
+      unpinTooltip();
+    } else {
+      hidePageTooltip();
+      removeElementHighlight();
+    }
+    
+    // Remove all temporary hover highlights
+    document.querySelectorAll('.qa-cs-temp-hover').forEach(el => {
+      el.classList.remove('qa-cs-temp-hover');
+    });
+    
     console.log("QA Selector Helper (Content Script): Hover mode DEACTIVATED.");
     sendResponse({ status: "success", hoverMode: isHoverModeActive });
+  } else if (request.action === "get_hover_mode_state") {
+    console.log("QA Selector Helper (Content Script): Returning hover mode state:", isHoverModeActive);
+    sendResponse({ status: "success", hoverMode: isHoverModeActive });
+  } else if (request.action === "get_pinned_state") {
+    console.log("QA Selector Helper (Content Script): Returning pinned state:", isTooltipPinned);
+    sendResponse({ status: "success", isPinned: isTooltipPinned });
+  } else if (request.action === "unpin_tooltip") {
+    if (isTooltipPinned) {
+      unpinTooltip();
+      sendResponse({ status: "success", message: "Tooltip unpinned" });
+    } else {
+      sendResponse({ status: "success", message: "No tooltip to unpin" });
+    }
   }
   else {
     console.log("QA Selector Helper (Content Script): Unknown action received:", request.action);

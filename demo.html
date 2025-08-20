@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QA Selector Helper Demo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #718096;
+            font-size: 18px;
+        }
+        
+        .demo-section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            background: #f7fafc;
+        }
+        
+        .demo-section h2 {
+            color: #2d3748;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #4299e1, #3182ce);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(66, 153, 225, 0.3);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #48bb78, #38a169);
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(72, 187, 120, 0.3);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #f56565, #e53e3e);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(245, 101, 101, 0.3);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #4299e1;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+        }
+        
+        .card-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        
+        .card h3 {
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+        
+        .card p {
+            color: #718096;
+            line-height: 1.6;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-online {
+            background: #48bb78;
+        }
+        
+        .status-offline {
+            background: #f56565;
+        }
+        
+        .status-warning {
+            background: #ed8936;
+        }
+        
+        .navigation {
+            background: #2d3748;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .nav-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            gap: 20px;
+        }
+        
+        .nav-item a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+        
+        .nav-item a:hover {
+            color: #fbbf24;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #e2e8f0;
+            color: #718096;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>QA Selector Helper Demo</h1>
+            <p>Test berbagai selector untuk extension QA Selector Helper</p>
+        </div>
+
+        <!-- Navigation Section -->
+        <nav class="navigation" id="main-navigation" data-testid="main-nav">
+            <ul class="nav-list">
+                <li class="nav-item"><a href="#home" id="nav-home" data-testid="nav-home-link">Home</a></li>
+                <li class="nav-item"><a href="#about" id="nav-about" data-testid="nav-about-link">About</a></li>
+                <li class="nav-item"><a href="#contact" id="nav-contact" data-testid="nav-contact-link">Contact</a></li>
+                <li class="nav-item"><a href="#help" id="nav-help" data-testid="nav-help-link">Help</a></li>
+            </ul>
+        </nav>
+
+        <!-- Buttons Section -->
+        <div class="demo-section" id="buttons-section" data-testid="buttons-demo">
+            <h2>Button Elements</h2>
+            <div class="button-group">
+                <button class="btn btn-primary" id="submit-btn" data-testid="submit-button" data-action="submit">
+                    Submit Form
+                </button>
+                <button class="btn btn-secondary" id="save-btn" data-testid="save-button" data-action="save">
+                    Save Data
+                </button>
+                <button class="btn btn-danger" id="delete-btn" data-testid="delete-button" data-action="delete">
+                    Delete Item
+                </button>
+                <button class="btn btn-primary" id="cancel-btn" data-testid="cancel-button" data-action="cancel">
+                    Cancel
+                </button>
+            </div>
+        </div>
+
+        <!-- Form Section -->
+        <div class="demo-section" id="form-section" data-testid="form-demo">
+            <h2>Form Elements</h2>
+            <div class="form-group">
+                <label class="form-label" for="username-input" id="username-label" data-testid="username-label">Username:</label>
+                <input type="text" class="form-input" id="username-input" data-testid="username-field" data-field="username" placeholder="Enter username">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="email-input" id="email-label" data-testid="email-label">Email:</label>
+                <input type="email" class="form-input" id="email-input" data-testid="email-field" data-field="email" placeholder="Enter email">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="password-input" id="password-label" data-testid="password-label">Password:</label>
+                <input type="password" class="form-input" id="password-input" data-testid="password-field" data-field="password" placeholder="Enter password">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="message-textarea" id="message-label" data-testid="message-label">Message:</label>
+                <textarea class="form-input" id="message-textarea" data-testid="message-field" data-field="message" rows="4" placeholder="Enter your message"></textarea>
+            </div>
+        </div>
+
+        <!-- Cards Section -->
+        <div class="demo-section" id="cards-section" data-testid="cards-demo">
+            <h2>Card Elements</h2>
+            <div class="card-container">
+                <div class="card" id="card-1" data-testid="user-card" data-card-type="user">
+                    <h3 id="card-1-title" data-testid="user-card-title">User Profile</h3>
+                    <p id="card-1-description" data-testid="user-card-desc">This is a user profile card with various selectors for testing.</p>
+                    <div id="card-1-status" data-testid="user-card-status">
+                        <span class="status-indicator status-online" id="status-indicator-1" data-testid="user-status-indicator"></span>
+                        <span id="status-text-1" data-testid="user-status-text">Online</span>
+                    </div>
+                </div>
+                
+                <div class="card" id="card-2" data-testid="product-card" data-card-type="product">
+                    <h3 id="card-2-title" data-testid="product-card-title">Product Info</h3>
+                    <p id="card-2-description" data-testid="product-card-desc">Product information card with multiple selector types.</p>
+                    <div id="card-2-status" data-testid="product-card-status">
+                        <span class="status-indicator status-warning" id="status-indicator-2" data-testid="product-status-indicator"></span>
+                        <span id="status-text-2" data-testid="product-status-text">Limited Stock</span>
+                    </div>
+                </div>
+                
+                <div class="card" id="card-3" data-testid="system-card" data-card-type="system">
+                    <h3 id="card-3-title" data-testid="system-card-title">System Status</h3>
+                    <p id="card-3-description" data-testid="system-card-desc">System status monitoring card for testing purposes.</p>
+                    <div id="card-3-status" data-testid="system-card-status">
+                        <span class="status-indicator status-offline" id="status-indicator-3" data-testid="system-status-indicator"></span>
+                        <span id="status-text-3" data-testid="system-status-text">Offline</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Links Section -->
+        <div class="demo-section" id="links-section" data-testid="links-demo">
+            <h2>Link Elements</h2>
+            <div class="button-group">
+                <a href="#" class="btn btn-primary" id="external-link" data-testid="external-link" data-link-type="external">External Link</a>
+                <a href="#" class="btn btn-secondary" id="internal-link" data-testid="internal-link" data-link-type="internal">Internal Link</a>
+                <a href="#" class="btn btn-danger" id="download-link" data-testid="download-link" data-link-type="download">Download File</a>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer" id="page-footer" data-testid="page-footer">
+            <p id="footer-text" data-testid="footer-text">© 2024 QA Selector Helper Demo. All rights reserved.</p>
+            <div id="footer-links" data-testid="footer-links">
+                <a href="#" id="footer-privacy" data-testid="footer-privacy-link">Privacy Policy</a> |
+                <a href="#" id="footer-terms" data-testid="footer-terms-link">Terms of Service</a> |
+                <a href="#" id="footer-contact" data-testid="footer-contact-link">Contact Us</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add some interactive functionality for demo purposes
+        document.addEventListener('DOMContentLoaded', function() {
+            // Button click handlers
+            document.getElementById('submit-btn').addEventListener('click', function() {
+                alert('Submit button clicked!');
+            });
+            
+            document.getElementById('save-btn').addEventListener('click', function() {
+                alert('Save button clicked!');
+            });
+            
+            document.getElementById('delete-btn').addEventListener('click', function() {
+                alert('Delete button clicked!');
+            });
+            
+            document.getElementById('cancel-btn').addEventListener('click', function() {
+                alert('Cancel button clicked!');
+            });
+            
+            // Form input handlers
+            const inputs = document.querySelectorAll('.form-input');
+            inputs.forEach(input => {
+                input.addEventListener('focus', function() {
+                    this.style.borderColor = '#4299e1';
+                });
+                
+                input.addEventListener('blur', function() {
+                    this.style.borderColor = '#e2e8f0';
+                });
+            });
+            
+            // Card click handlers
+            const cards = document.querySelectorAll('.card');
+            cards.forEach(card => {
+                card.addEventListener('click', function() {
+                    console.log('Card clicked:', this.id);
+                });
+            });
+            
+            // Link handlers
+            const links = document.querySelectorAll('a[href="#"]');
+            links.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    alert('Link clicked: ' + this.textContent);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

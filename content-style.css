@@ -5,23 +5,27 @@
     background-color: #2d3748; /* Dark background */
     color: #e2e8f0; /* Light text */
     border: 1px solid #4a5568; /* Slightly lighter border */
-    padding: 8px 12px;
-    border-radius: 6px;
+    padding: 12px 16px;
+    border-radius: 8px;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     font-size: 12px;
     z-index: 2147483647; /* Max z-index to try to be on top */
-    pointer-events: none; /* Tooltip should not capture mouse events */
+    pointer-events: auto; /* Allow interaction with copy buttons */
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
-    max-width: 350px;
+    max-width: 450px;
+    min-width: 300px;
     display: none; /* Initially hidden */
-    line-height: 1.4;
+    line-height: 1.5;
     opacity: 0; /* For fade-in animation */
     transform: translateY(10px); /* For slide-in animation */
     transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+    white-space: normal; /* Allow text wrapping */
+    overflow: visible;
+    text-overflow: unset;
 }
 
 .qa-cs-tooltip.visible {
-    display: block;
+    display: block !important;
     opacity: 1;
     transform: translateY(0);
 }
@@ -35,4 +39,103 @@
     outline-offset: 1px !important;
     box-shadow: 0 0 8px rgba(245, 158, 11, 0.5) !important; /* Optional glow */
     background-color: rgba(245, 158, 11, 0.05) !important; /* Very subtle background tint */
+    position: relative !important;
+    z-index: 2147483646 !important; /* High z-index but below tooltip */
+}
+
+/* Additional highlight animation */
+.qa-cs-highlight::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    border: 2px solid #f59e0b;
+    border-radius: inherit;
+    animation: highlightPulse 1.5s infinite;
+    pointer-events: none;
+    z-index: -1;
+}
+
+@keyframes highlightPulse {
+    0% { 
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% { 
+        opacity: 0.5;
+        transform: scale(1.02);
+    }
+    100% { 
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Tooltip copy button styles */
+.qa-tooltip-copy-btn {
+    background: #f59e0b !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 3px !important;
+    padding: 2px 6px !important;
+    margin-left: 8px !important;
+    font-size: 10px !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+}
+
+.qa-tooltip-copy-btn:hover {
+    background: #d97706 !important;
+    transform: scale(1.05) !important;
+}
+
+/* Pinned element styles */
+.qa-cs-pinned {
+    outline: 3px solid #8b5cf6 !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.4), 
+                0 0 30px rgba(139, 92, 246, 0.3) !important;
+    background-color: rgba(139, 92, 246, 0.1) !important;
+    position: relative !important;
+    z-index: 2147483646 !important;
+    animation: pinnedPulse 2s infinite !important;
+}
+
+@keyframes pinnedPulse {
+    0% { 
+        outline-color: #8b5cf6;
+        box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.4), 0 0 30px rgba(139, 92, 246, 0.3);
+    }
+    50% { 
+        outline-color: #a855f7;
+        box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.6), 0 0 50px rgba(139, 92, 246, 0.5);
+    }
+    100% { 
+        outline-color: #8b5cf6;
+        box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.4), 0 0 30px rgba(139, 92, 246, 0.3);
+    }
+}
+
+/* Pinned tooltip styles */
+.qa-cs-tooltip-pinned {
+    border: 2px solid #8b5cf6 !important;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3), 
+                0 0 0 1px rgba(139, 92, 246, 0.5),
+                0 0 20px rgba(139, 92, 246, 0.3) !important;
+}
+
+.qa-pinned-indicator {
+    margin-bottom: 8px;
+}
+
+/* Temporary hover highlight when tooltip is pinned */
+.qa-cs-temp-hover {
+    outline: 2px solid #f59e0b !important;
+    outline-offset: 1px !important;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.5) !important;
+    background-color: rgba(245, 158, 11, 0.05) !important;
+    position: relative !important;
+    z-index: 2147483645 !important; /* Below pinned element */
 }
