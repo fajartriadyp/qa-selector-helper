@@ -46,6 +46,9 @@ class QASelectorHelper {
                     <button class="qa-button qa-unpin-btn" id="unpin-btn" style="width: auto; padding: 8px 12px; font-size: 12px; display: none;">
                         🔓 Unpin
                     </button>
+                    <button class="qa-button" id="remove-highlight-btn" style="width: auto; padding: 8px 12px; font-size: 12px; background: #ef4444; color: white;">
+                        🗑️ Remove Highlight
+                    </button>
                 </div>
                 <div class="qa-hover-instructions" style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; padding: 12px; margin: 12px 0; font-size: 12px; color: #374151;">
                     <strong>💡 Hover Mode Tips:</strong><br>
@@ -54,6 +57,13 @@ class QASelectorHelper {
                     • <strong>Right click lagi</strong> untuk unpin tooltip<br>
                     • <strong>Copy selector</strong> dengan klik tombol 📋 di tooltip<br>
                     • <strong>Pinned tooltip</strong> tetap menampilkan elemen yang di-pin meskipun hover ke elemen lain
+                </div>
+                <div class="qa-highlight-instructions" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 12px; margin: 12px 0; font-size: 12px; color: #374151;">
+                    <strong>🎯 Highlight Mode Tips:</strong><br>
+                    • <strong>Klik selector</strong> di daftar untuk highlight elemen di website<br>
+                    • <strong>Highlight otomatis hilang</strong> setelah 5 detik atau klik di luar elemen<br>
+                    • <strong>Tombol 🗑️ Remove Highlight</strong> untuk menghapus semua highlight manual<br>
+                    • <strong>Elemen akan di-scroll</strong> ke tengah layar saat di-highlight
                 </div>
                 <div class="qa-count" id="selector-count">Found: 0 selectors</div>
                 <div class="qa-selector-list" id="selector-list"></div>
@@ -69,6 +79,7 @@ class QASelectorHelper {
         document.getElementById('hover-toggle').addEventListener('click', () => this.toggleHoverMode());
         document.getElementById('pin-toggle').addEventListener('click', (event) => this.togglePin(event)); // Pass event
         document.getElementById('unpin-btn').addEventListener('click', () => this.unpinFromPopup());
+        document.getElementById('remove-highlight-btn').addEventListener('click', () => this.removeHighlight());
 
         // Listen for messages from content script (or other parts of the extension)
         chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -244,6 +255,26 @@ class QASelectorHelper {
         elementsDataArray.forEach((elementData) => {
             const div = document.createElement('div');
             div.className = 'qa-selector-item';
+            div.style.cursor = 'pointer';
+            div.style.transition = 'all 0.2s ease';
+            div.style.borderRadius = '8px';
+            div.style.padding = '8px';
+            div.style.marginBottom = '8px';
+            
+            // Add hover effect
+            div.addEventListener('mouseenter', () => {
+                div.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
+                div.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+                div.style.transform = 'translateY(-1px)';
+                div.style.boxShadow = '0 2px 8px rgba(16, 185, 129, 0.2)';
+            });
+            
+            div.addEventListener('mouseleave', () => {
+                div.style.backgroundColor = 'transparent';
+                div.style.border = '1px solid transparent';
+                div.style.transform = 'translateY(0)';
+                div.style.boxShadow = 'none';
+            });
             
             const contentDiv = document.createElement('div');
             contentDiv.style.display = 'flex';
@@ -253,9 +284,25 @@ class QASelectorHelper {
             contentDiv.style.gap = '8px';
 
             const infoDiv = document.createElement('div');
+            const headerDiv = document.createElement('div');
+            headerDiv.style.display = 'flex';
+            headerDiv.style.justifyContent = 'space-between';
+            headerDiv.style.alignItems = 'center';
+            headerDiv.style.marginBottom = '8px';
+            
             const strongTag = document.createElement('strong');
             strongTag.textContent = elementData.tagName; // Use data from object
-            infoDiv.appendChild(strongTag);
+            strongTag.style.color = '#374151';
+            
+            const clickIndicator = document.createElement('span');
+            clickIndicator.textContent = '🎯 Klik untuk highlight';
+            clickIndicator.style.fontSize = '10px';
+            clickIndicator.style.color = '#10b981';
+            clickIndicator.style.fontWeight = 'bold';
+            
+            headerDiv.appendChild(strongTag);
+            headerDiv.appendChild(clickIndicator);
+            infoDiv.appendChild(headerDiv);
 
             // Display all available selectors in order of priority
             if (elementData.selectors && elementData.selectors.length > 0) {
@@ -324,9 +371,9 @@ class QASelectorHelper {
             
             div.addEventListener('click', (e) => {
                 if (!e.target.classList.contains('qa-copy-btn')) {
-                    // TODO: Send message to content script to highlight element
+                    // Send message to content script to highlight element
                     console.log("Highlight request for:", elementData);
-                    alert("Highlighting on page not yet implemented. Selector: " + (elementData.selectors && elementData.selectors.length > 0 ? elementData.selectors[0].value : 'N/A'));
+                    this.highlightElementOnPage(elementData);
                 }
             });
             listElement.appendChild(div);
@@ -657,6 +704,71 @@ class QASelectorHelper {
         // }
         // TODO: Send message to content script to unpin.
         console.log("Unpin action: Would need to message content script.");
+    }
+
+    highlightElementOnPage(elementData) {
+        if (!elementData || !elementData.selectors || elementData.selectors.length === 0) {
+            console.warn("QA Selector Helper: No valid selectors found for highlighting");
+            return;
+        }
+
+        // Use the first (highest priority) selector
+        const selector = elementData.selectors[0].value;
+        
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0] && tabs[0].id) {
+                chrome.tabs.sendMessage(
+                    tabs[0].id,
+                    { 
+                        action: "highlight_element",
+                        selector: selector,
+                        highlightType: 'temporary'
+                    },
+                    (response) => {
+                        if (chrome.runtime.lastError) {
+                            console.error("QA Selector Helper: Error highlighting element:", chrome.runtime.lastError.message);
+                            alert("Error highlighting element: " + chrome.runtime.lastError.message);
+                        } else {
+                            console.log("QA Selector Helper: Highlight element response:", response);
+                            if (response && response.status === "success") {
+                                console.log("QA Selector Helper: Element highlighted successfully");
+                            } else if (response && response.status === "error") {
+                                console.error("QA Selector Helper: Content script reported error:", response.message);
+                                alert("Error highlighting element: " + response.message);
+                            }
+                        }
+                    }
+                );
+            } else {
+                console.error("QA Selector Helper: Could not get active tab ID to highlight element.");
+                alert("Could not get active tab to highlight element.");
+            }
+        });
+    }
+
+    removeHighlight() {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0] && tabs[0].id) {
+                chrome.tabs.sendMessage(
+                    tabs[0].id,
+                    { action: "remove_highlight" },
+                    (response) => {
+                        if (chrome.runtime.lastError) {
+                            console.error("QA Selector Helper: Error removing highlight:", chrome.runtime.lastError.message);
+                            alert("Error removing highlight: " + chrome.runtime.lastError.message);
+                        } else {
+                            console.log("QA Selector Helper: Remove highlight response:", response);
+                            if (response && response.status === "success") {
+                                console.log("QA Selector Helper: All highlights removed successfully");
+                            }
+                        }
+                    }
+                );
+            } else {
+                console.error("QA Selector Helper: Could not get active tab ID to remove highlight.");
+                alert("Could not get active tab to remove highlight.");
+            }
+        });
     }
 }
 

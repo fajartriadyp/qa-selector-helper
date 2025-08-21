@@ -139,3 +139,56 @@
     position: relative !important;
     z-index: 2147483645 !important; /* Below pinned element */
 }
+
+/* Element highlighting from popup selection */
+.qa-cs-temp-highlight {
+    outline: 3px solid #10b981 !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.4), 
+                0 0 20px rgba(16, 185, 129, 0.4) !important;
+    background-color: rgba(16, 185, 129, 0.1) !important;
+    position: relative !important;
+    z-index: 2147483646 !important;
+    animation: popupHighlightPulse 1s infinite !important;
+}
+
+.qa-cs-permanent-highlight {
+    outline: 3px solid #ef4444 !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.4), 
+                0 0 20px rgba(239, 68, 68, 0.4) !important;
+    background-color: rgba(239, 68, 68, 0.1) !important;
+    position: relative !important;
+    z-index: 2147483646 !important;
+    animation: permanentHighlightPulse 2s infinite !important;
+}
+
+@keyframes popupHighlightPulse {
+    0% { 
+        outline-color: #10b981;
+        box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.4), 0 0 20px rgba(16, 185, 129, 0.4);
+    }
+    50% { 
+        outline-color: #34d399;
+        box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.6), 0 0 30px rgba(16, 185, 129, 0.6);
+    }
+    100% { 
+        outline-color: #10b981;
+        box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.4), 0 0 20px rgba(16, 185, 129, 0.4);
+    }
+}
+
+@keyframes permanentHighlightPulse {
+    0% { 
+        outline-color: #ef4444;
+        box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.4), 0 0 20px rgba(239, 68, 68, 0.4);
+    }
+    50% { 
+        outline-color: #f87171;
+        box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.6), 0 0 30px rgba(239, 68, 68, 0.6);
+    }
+    100% { 
+        outline-color: #ef4444;
+        box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.4), 0 0 20px rgba(239, 68, 68, 0.4);
+    }
+}

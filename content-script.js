@@ -549,6 +549,65 @@ function removePinnedIndicator() {
     }
 }
 
+// --- Element Highlighting Functions ---
+function highlightElementOnPage(element, highlightType = 'temporary') {
+    if (!(element instanceof Element)) {
+        console.warn("highlightElementOnPage: input is not an Element", element);
+        return;
+    }
+    
+    // Remove any existing highlights first
+    removeAllHighlights();
+    
+    // Add highlight class based on type
+    if (highlightType === 'permanent') {
+        element.classList.add('qa-cs-permanent-highlight');
+    } else {
+        element.classList.add('qa-cs-temp-highlight');
+    }
+    
+    // Scroll element into view
+    element.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center',
+        inline: 'center'
+    });
+    
+    // Add click listener to remove highlight when clicking outside
+    if (highlightType === 'temporary') {
+        setTimeout(() => {
+            const clickOutsideHandler = (event) => {
+                if (!element.contains(event.target) && !event.target.closest('.qa-extension-popup')) {
+                    removeAllHighlights();
+                    document.removeEventListener('click', clickOutsideHandler);
+                }
+            };
+            document.addEventListener('click', clickOutsideHandler);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                removeAllHighlights();
+                document.removeEventListener('click', clickOutsideHandler);
+            }, 5000);
+        }, 100);
+    }
+    
+    console.log("QA Selector Helper (Content Script): Element highlighted:", element);
+}
+
+function removeAllHighlights() {
+    // Remove all highlight classes
+    document.querySelectorAll('.qa-cs-temp-highlight').forEach(el => {
+        el.classList.remove('qa-cs-temp-highlight');
+    });
+    
+    document.querySelectorAll('.qa-cs-permanent-highlight').forEach(el => {
+        el.classList.remove('qa-cs-permanent-highlight');
+    });
+    
+    console.log("QA Selector Helper (Content Script): All highlights removed");
+}
+
 // Initialize tooltip once when script loads
 createPageTooltip(); 
 
@@ -607,6 +666,26 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     } else {
       sendResponse({ status: "success", message: "No tooltip to unpin" });
     }
+  } else if (request.action === "highlight_element") {
+    console.log("QA Selector Helper (Content Script): Highlight element request received:", request);
+    const selector = request.selector;
+    const highlightType = request.highlightType || 'temporary';
+    
+    try {
+      const element = document.querySelector(selector);
+      if (element) {
+        highlightElementOnPage(element, highlightType);
+        sendResponse({ status: "success", message: "Element highlighted successfully" });
+      } else {
+        sendResponse({ status: "error", message: "Element not found with selector: " + selector });
+      }
+    } catch (error) {
+      console.error("QA Selector Helper (Content Script): Error highlighting element:", error);
+      sendResponse({ status: "error", message: "Error highlighting element: " + error.message });
+    }
+  } else if (request.action === "remove_highlight") {
+    removeAllHighlights();
+    sendResponse({ status: "success", message: "All highlights removed" });
   }
   else {
     console.log("QA Selector Helper (Content Script): Unknown action received:", request.action);

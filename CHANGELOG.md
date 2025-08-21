@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2024-08-21
+
+### Added
+- **Highlight Element Feature**: Fitur untuk menampilkan elemen yang dipilih dari popup di website
+- **Click to Highlight**: Klik selector di popup untuk highlight elemen di website
+- **Auto Scroll**: Elemen yang di-highlight akan otomatis di-scroll ke tengah layar
+- **Temporary Highlight**: Highlight otomatis hilang setelah 5 detik atau klik di luar elemen
+- **Remove Highlight Button**: Tombol "🗑️ Remove Highlight" untuk menghapus semua highlight manual
+- **Visual Feedback**: Item selector di popup memiliki hover effect dan indikator "🎯 Klik untuk highlight"
+- **Highlight Instructions**: Petunjuk penggunaan fitur highlight di popup
+- **Test Page**: File `test-highlight.html` untuk testing fitur highlight
+
+### Technical Improvements
+- **Message Handlers**: Handler baru untuk `highlight_element` dan `remove_highlight`
+- **CSS Highlight Classes**: Class CSS untuk temporary dan permanent highlight
+- **Animation Effects**: Animasi pulse untuk highlight element
+- **Event Management**: Auto-remove highlight dengan click outside dan timeout
+- **Error Handling**: Error handling untuk selector not found dan invalid selector
+
+### UI/UX Enhancements
+- **Hover Effects**: Item selector memiliki hover effect untuk menunjukkan bisa diklik
+- **Visual Indicators**: Indikator visual untuk menunjukkan selector bisa diklik
+- **Better Styling**: Styling yang lebih baik untuk highlight element
+- **User Instructions**: Instruksi lengkap untuk penggunaan fitur highlight
+
+### Documentation
+- **HIGHLIGHT_FEATURE.md**: Dokumentasi lengkap untuk fitur highlight element
+- **Troubleshooting Guide**: Panduan troubleshooting untuk masalah highlight
+- **Future Enhancement**: Daftar fitur yang bisa ditambahkan di masa depan
+
 ## [1.1.1] - 2024-08-20
 
 ### Fixed
