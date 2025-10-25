@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Highlight Feature</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+        .form-group {
+            margin: 10px 0;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .card {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .highlight-demo {
+            background: #e9ecef;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="main-title">Test Highlight Feature</h1>
+        
+        <div class="test-section">
+            <h2 id="section-1">Section 1: Buttons</h2>
+            <button id="test-button-1" class="button">Test Button 1</button>
+            <button id="test-button-2" class="button">Test Button 2</button>
+            <button id="test-button-3" class="button">Test Button 3</button>
+        </div>
+
+        <div class="test-section">
+            <h2 id="section-2">Section 2: Form Elements</h2>
+            <div class="form-group">
+                <label for="name-input">Name:</label>
+                <input type="text" id="name-input" placeholder="Enter your name">
+            </div>
+            <div class="form-group">
+                <label for="email-input">Email:</label>
+                <input type="email" id="email-input" placeholder="Enter your email">
+            </div>
+            <div class="form-group">
+                <label for="message-input">Message:</label>
+                <input type="text" id="message-input" placeholder="Enter your message">
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2 id="section-3">Section 3: Cards</h2>
+            <div id="card-1" class="card">
+                <h3>Card 1</h3>
+                <p>This is the first card with some content.</p>
+            </div>
+            <div id="card-2" class="card">
+                <h3>Card 2</h3>
+                <p>This is the second card with different content.</p>
+            </div>
+            <div id="card-3" class="card">
+                <h3>Card 3</h3>
+                <p>This is the third card with more content.</p>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2 id="section-4">Section 4: Data Attributes</h2>
+            <div data-testid="test-element-1" class="highlight-demo">
+                <p>Element with data-testid="test-element-1"</p>
+            </div>
+            <div data-testid="test-element-2" class="highlight-demo">
+                <p>Element with data-testid="test-element-2"</p>
+            </div>
+            <div data-custom="custom-value" class="highlight-demo">
+                <p>Element with data-custom="custom-value"</p>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2 id="section-5">Section 5: Complex Elements</h2>
+            <nav id="main-navigation">
+                <ul>
+                    <li><a href="#" id="nav-home">Home</a></li>
+                    <li><a href="#" id="nav-about">About</a></li>
+                    <li><a href="#" id="nav-contact">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+
+        <div class="test-section">
+            <h2 id="section-6">Section 6: Nested Elements</h2>
+            <div id="parent-container">
+                <div class="nested-child" id="child-1">
+                    <span id="deep-nested">Deep nested element</span>
+                </div>
+                <div class="nested-child" id="child-2">
+                    <span id="another-deep">Another deep nested element</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add some interactive functionality
+        document.querySelectorAll('.button').forEach(button => {
+            button.addEventListener('click', function() {
+                alert('Button clicked: ' + this.textContent);
+            });
+        });
+
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('focus', function() {
+                this.style.borderColor = '#007bff';
+            });
+            
+            input.addEventListener('blur', function() {
+                this.style.borderColor = '#ddd';
+            });
+        });
+    </script>
+</body>
+</html>
+

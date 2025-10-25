@@ -608,6 +608,41 @@ function removeAllHighlights() {
     console.log("QA Selector Helper (Content Script): All highlights removed");
 }
 
+// Selector Validation Function
+function validateSelectors(selectorsData) {
+    console.log("QA Selector Helper (Content Script): Starting selector validation");
+    const results = [];
+    
+    selectorsData.forEach(elementData => {
+        if (elementData.selectors && elementData.selectors.length > 0) {
+            elementData.selectors.forEach(selector => {
+                const result = {
+                    selector: selector.value,
+                    type: selector.type,
+                    isValid: false,
+                    error: null
+                };
+                
+                try {
+                    const elements = document.querySelectorAll(selector.value);
+                    if (elements.length > 0) {
+                        result.isValid = true;
+                    } else {
+                        result.error = "No elements found";
+                    }
+                } catch (error) {
+                    result.error = `Invalid selector: ${error.message}`;
+                }
+                
+                results.push(result);
+            });
+        }
+    });
+    
+    console.log("QA Selector Helper (Content Script): Validation completed:", results);
+    return results;
+}
+
 // Initialize tooltip once when script loads
 createPageTooltip(); 
 
@@ -686,6 +721,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   } else if (request.action === "remove_highlight") {
     removeAllHighlights();
     sendResponse({ status: "success", message: "All highlights removed" });
+  } else if (request.action === "validate_selectors") {
+    console.log("QA Selector Helper (Content Script): Validating selectors:", request.selectors);
+    const validationResults = validateSelectors(request.selectors);
+    sendResponse({ status: "success", data: validationResults });
   }
   else {
     console.log("QA Selector Helper (Content Script): Unknown action received:", request.action);
