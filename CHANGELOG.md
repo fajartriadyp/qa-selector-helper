@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.2.0] - 2024-08-21
+## [1.2.0] - 2025-08-21
 
 ### Added
 - **Highlight Element Feature**: Fitur untuk menampilkan elemen yang dipilih dari popup di website
@@ -32,7 +32,7 @@ All notable changes to this project will be documented in this file.
 - **Troubleshooting Guide**: Panduan troubleshooting untuk masalah highlight
 - **Future Enhancement**: Daftar fitur yang bisa ditambahkan di masa depan
 
-## [1.1.1] - 2024-08-20
+## [1.1.1] - 2025-08-20
 
 ### Fixed
 - **Pinned Tooltip Behavior**: Tooltip yang di-pin sekarang tetap menampilkan elemen yang di-pin meskipun hover ke elemen lain
@@ -49,7 +49,7 @@ All notable changes to this project will be documented in this file.
 - **Temporary Highlight System**: Sistem highlight sementara untuk elemen yang di-hover ketika tooltip di-pin
 - **CSS Class Management**: Perbaikan management CSS classes untuk berbagai jenis highlight
 
-## [1.1.0] - 2024-08-20
+## [1.1.0] - 2025-08-20
 
 ### Added
 - **Pin/Unpin Tooltip dengan Right Click**: Klik kanan untuk membuat tooltip tetap stay di tempat
@@ -72,7 +72,7 @@ All notable changes to this project will be documented in this file.
 - **Pinned Tooltip Styling**: Tooltip dengan border ungu saat di-pin
 - **Better Visual Feedback**: Animasi dan styling yang jelas untuk elemen yang di-pin
 
-## [1.0.1] - 2024-08-20
+## [1.0.1] - 2025-08-20
 
 ### Fixed
 - **Hover Mode State Synchronization**: Memperbaiki masalah dimana state hover mode tidak tersinkronisasi antara popup dan content script
@@ -91,7 +91,7 @@ All notable changes to this project will be documented in this file.
 - **UI Consistency**: UI popup selalu konsisten dengan state hover mode yang sebenarnya
 - **Robust Communication**: Komunikasi antara popup dan content script yang lebih robust
 
-## [1.0.0] - 2024-08-20
+## [1.0.0] - 2025-08-20
 
 ### Added
 - **Prioritas ID Selector**: Selector ID sekarang muncul paling atas dalam daftar hasil scan
@@ -129,7 +129,7 @@ All notable changes to this project will be documented in this file.
 - **Priority-based Sorting**: Implementasi sorting berdasarkan prioritas selector
 - **Better Error Handling**: Error handling yang lebih robust untuk copy functionality
 
-## [0.9.0] - 2024-06-26
+## [0.9.0] - 2025-06-26
 
 ### Added
 - Initial release of QA Selector Helper Extension
